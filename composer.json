@@ -1,6 +1,6 @@
 {
-    "name": "nelmio/api-doc-bundle",
-    "description": "Generates documentation for your REST API from annotations",
+    "name": "erd0s/api-doc-bundle",
+    "description": "Small modifications to NelmioApiDoc to support the swagger 2 definition we're using in Seatfrog",
     "keywords": ["api", "documentation", "doc", "rest"],
     "type": "symfony-bundle",
     "license": "MIT",

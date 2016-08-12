@@ -790,4 +790,12 @@ class ApiDoc
             $this->response = $model;
         }
     }
+
+    /**
+     * @return array
+     */
+    public function getTags()
+    {
+        return array_keys($this->tags);
+    }
 }
