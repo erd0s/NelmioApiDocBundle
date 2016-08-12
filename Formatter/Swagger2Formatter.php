@@ -1,6 +1,7 @@
 <?php
 namespace Nelmio\ApiDocBundle\Formatter;
 
+use Doctrine\Common\Collections\ArrayCollection;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 
 class Swagger2Formatter implements FormatterInterface
@@ -61,26 +62,36 @@ class Swagger2Formatter implements FormatterInterface
             // Do the url parameters
             $parameters = [];
             foreach ($annotation->getParameters() as $name => $parameter) {
-                $p = [];
-                $p["name"] = $name;
-                $p["in"] = "path";
-                if (array_key_exists("dataType", $parameter)) $p["type"] = $parameter["dataType"];
-                if (array_key_exists("description", $parameter)) $p["description"] = $parameter["description"];
-                if (array_key_exists("required", $parameter)) $p["required"] = $parameter["required"] == 'true' ? true : false;
+                if (array_key_exists("url", $parameter)) {
+                    $p = [];
+                    $p["name"] = $name;
+                    $p["in"] = "path";
+                    if (array_key_exists("dataType", $parameter)) $p["type"] = $parameter["dataType"];
+                    if (array_key_exists("description", $parameter)) $p["description"] = $parameter["description"];
+                    if (array_key_exists("required", $parameter)) $p["required"] = $parameter["required"] == 'true' ? true : false;
 
-                $parameters[] = $p;
+                    $parameters[] = $p;
+                }
             }
             if (sizeof($parameters) > 0) $route[$method]["parameters"] = $parameters;
 
-            // TODO the body parameters
+            // Do the body parameters
+            if ($annotation->getInput()) {
+                $route[$method]["parameters"][] = [
+                    'name' => 'data',
+                    'in' => 'body',
+                    'schema' => [
+                        '$ref' => "#/definitions/".$this->getSmallClass($annotation->getInput())
+                    ]
+                ];
+            }
 
             // Do the responses
             $responses = [];
             foreach ($annotation->getResponseMap() as $statusCode => $responseMap) {
                 $r = [];
 
-                // TODO schema
-                if (array_key_exists("class", $responseMap)) {
+                if (array_key_exists("class", $responseMap) && $responseMap["class"] != "") {
                     $r["schema"] = [
                         "\$ref" => "#/definitions/".$this->getSmallClass($responseMap["class"])
                     ];
@@ -129,6 +140,21 @@ class Swagger2Formatter implements FormatterInterface
         foreach ($collection as $item) {
             $annotation = $item['annotation'];
 
+            // Check for input type
+            if ($annotation->getInput() != "" && $annotation->getInput() != null) {
+                $className = $annotation->getInput();
+
+                // We only want the parameters that weren't part of the url
+                if (!array_key_exists($className, $definitions)) {
+                    $params = new ArrayCollection($annotation->getParameters());
+                    $params = $params->filter(function ($paramItem) {
+                        return !array_key_exists("url", $paramItem);
+                    });
+
+                    $definitions[$className] = $params->toArray();
+                }
+            }
+
             // Add response maps to potential type definitions
             foreach ($annotation->getParsedResponseMap() as $response) {
                 $className = $this->getSmallClass($response['type']['class']);
@@ -166,7 +192,10 @@ class Swagger2Formatter implements FormatterInterface
                 }
                 else {
                     // Just a normal scalar
-                    if ($fieldValue['dataType'] == "DateTime") {
+                    if ($fieldValue['dataType'] == "float") {
+                        $field["type"] = "number";
+                    }
+                    else if ($fieldValue['dataType'] == "DateTime") {
                         $field['type'] = "string";
                         $field['format'] = "dateTime";
                     }
