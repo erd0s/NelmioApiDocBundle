@@ -159,7 +159,7 @@ class Swagger2Formatter implements FormatterInterface
             foreach ($annotation->getParsedResponseMap() as $response) {
                 $className = $this->getSmallClass($response['type']['class']);
 
-                if (!array_key_exists($className, $definitions)) {
+                if ($className != "" && !array_key_exists($className, $definitions)) {
                     $definitions[$className] = $response["model"];
                     $definitions = $this->getTypes($definitions, $response['model']);
                 }
@@ -179,15 +179,13 @@ class Swagger2Formatter implements FormatterInterface
                 if ($fieldValue['subType'] != null) {
                     // This is either an object or a collection
                     $className = $this->getSmallClass($fieldValue['subType']);
-                    if ($className == "AircraftGalleryImage") {
-                        $var = 1;
-                    }
-                    if ($fieldValue['actualType'] == "collection") {
-                        $field['type'] = "array";
-                        $field['items'] = ['$ref' => "#/definitions/$className"];
-                    }
-                    else {
-                        $field['$ref'] = "#/definitions/$className";
+                    if ($className != "") {
+                        if ($fieldValue['actualType'] == "collection") {
+                            $field['type'] = "array";
+                            $field['items'] = ['$ref' => "#/definitions/$className"];
+                        } else {
+                            $field['$ref'] = "#/definitions/$className";
+                        }
                     }
                 }
                 else {
@@ -211,7 +209,7 @@ class Swagger2Formatter implements FormatterInterface
                 $type['properties'][$fieldName] = $field;
             }
 
-            $swaggerDef['definitions'][$this->getSmallClass($name)] = str_replace("\\", "/", $type);
+            $swaggerDef['definitions'][$this->getSmallClass($name)] = $type;
         }
 
         return $swaggerDef;
